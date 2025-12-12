@@ -132,10 +132,27 @@ FROM {table_name} AS {table_alias}
     # ---------------------
     if parsed.entity == "snapshot":
         table_alias = "s"
-        table_name = "video_snapshots"
+        base_from = "video_snapshots AS s"
 
         if parsed.date_range is not None:
-            _apply_date_range(where, params, alias=table_alias, column="created_at", date_range=parsed.date_range)
+            if parsed.time_from is None and parsed.time_to is None:
+                _apply_date_range(where, params, alias=table_alias, column="created_at",
+                                      date_range=parsed.date_range)
+            else:
+                start_date = parsed.date_range.start
+                end_date = parsed.date_range.end
+                if start_date and end_date:
+                    time_from = parsed.time_from or "00:00:00"
+                    time_to = parsed.time_to or "23:59:59"
+                    params["start_ts"] = f"{start_date} {time_from}"
+                    params["end_ts"] = f"{end_date} {time_to}"
+                    where.append(f"{table_alias}.created_at BETWEEN :start_ts AND :end_ts")
+
+        from_clause = base_from
+        if parsed.creator_id is not None:
+            from_clause = base_from + " JOIN videos AS v ON v.id = s.video_id"
+            where.append("v.creator_id = :creator_id")
+            params["creator_id"] = parsed.creator_id
 
         where_sql = _build_where_clause(where)
 
@@ -147,10 +164,10 @@ FROM {table_name} AS {table_alias}
             raise ValueError(f"Unsupported metric {parsed.metric!r} for entity 'snapshot' without special mode")
 
         sql = f"""
-SELECT {select_expr} AS value
-FROM {table_name} AS {table_alias}
-{where_sql}
-""".strip()
+    SELECT {select_expr} AS value
+    FROM {from_clause}
+    {where_sql}
+    """.strip()
 
         return sql, params
 

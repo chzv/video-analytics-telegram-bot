@@ -52,6 +52,8 @@ class ParsedQuery(BaseModel):
     creator_id: Optional[str] = None
     min_views: Optional[int] = None
     date_range: Optional[DateRange] = None
+    time_from: Optional[str] = None   # optional time of day, "HH:MM" or "HH:MM:SS"
+    time_to: Optional[str] = None     # optional time of day, "HH:MM" or "HH:MM:SS"
     special: Optional[Literal[
         "distinct_videos_with_positive_delta",
         "snapshots_with_negative_delta_views",
@@ -66,7 +68,7 @@ Field semantics:
         For entity="snapshot": SELECT COUNT(*) FROM video_snapshots ...
     - "sum_views_delta":
         Sum the delta_views_count field from video_snapshots
-        (e.g. total growth of views for a given day).
+        (e.g. total growth of views for a given day or time interval).
     - "sum_views_total":
         Sum the views_count field (final total) from videos table.
     - "sum_likes_total":
@@ -91,7 +93,19 @@ Field semantics:
         - date_range refers to videos.video_created_at::date BETWEEN start and end.
 
     When metric is "sum_views_delta" and entity="snapshot":
-        - date_range refers to video_snapshots.created_at::date BETWEEN start and end.
+        - if time_from/time_to are null:
+            date_range refers to video_snapshots.created_at::date
+            BETWEEN start and end (whole days).
+        - if time_from/time_to are set:
+            you must interpret this as a datetime interval over created_at
+            limited to the given date_range and times.
+
+- time_from, time_to:
+    Optional time-of-day boundaries for snapshot-based queries.
+    Use 24-hour format "HH:MM" or "HH:MM:SS".
+    Typically used together with entity="snapshot", metric="sum_views_delta"
+    and a single-day date_range, for questions like
+    "с 10:00 до 15:00 в этот день".
 
 - special:
     - "distinct_videos_with_positive_delta":
@@ -114,7 +128,7 @@ for example: "28 ноября 2025", "с 1 по 5 ноября 2025" and so on.
 You MUST:
 1. Understand the question.
 2. Choose appropriate metric and entity.
-3. Fill filters: creator_id, min_views, date_range, special when needed.
+3. Fill filters: creator_id, min_views, date_range, time_from/time_to, special when needed.
 4. Convert all dates to ISO date strings in format "YYYY-MM-DD"
    (no time part), inside date_range.start and date_range.end.
 5. If some field is not needed, set it to null (in JSON).
@@ -133,6 +147,8 @@ A:
   "creator_id": null,
   "min_views": null,
   "date_range": null,
+  "time_from": null,
+  "time_to": null,
   "special": null
 }}
 
@@ -148,6 +164,8 @@ A:
     "start": "2025-11-01",
     "end": "2025-11-05"
   }},
+  "time_from": null,
+  "time_to": null,
   "special": null
 }}
 
@@ -160,6 +178,8 @@ A:
   "creator_id": null,
   "min_views": 100000,
   "date_range": null,
+  "time_from": null,
+  "time_to": null,
   "special": null
 }}
 
@@ -175,6 +195,8 @@ A:
     "start": "2025-11-28",
     "end": "2025-11-28"
   }},
+  "time_from": null,
+  "time_to": null,
   "special": null
 }}
 
@@ -190,6 +212,8 @@ A:
     "start": "2025-11-27",
     "end": "2025-11-27"
   }},
+  "time_from": null,
+  "time_to": null,
   "special": "distinct_videos_with_positive_delta"
 }}
 
@@ -202,6 +226,8 @@ A:
   "creator_id": "aca1061a9d324ecf8c3fa2bb32d7be63",
   "min_views": 10000,
   "date_range": null,
+  "time_from": null,
+  "time_to": null,
   "special": null
 }}
 
@@ -214,7 +240,26 @@ A:
   "creator_id": null,
   "min_views": null,
   "date_range": null,
+  "time_from": null,
+  "time_to": null,
   "special": "snapshots_with_negative_delta_views"
+}}
+
+Example 8:
+Q: "На сколько просмотров суммарно выросли все видео креатора с id 123 в промежутке с 10:00 до 15:00 (по тому времени, которое хранится в замерах) 28 ноября 2025 года? Нужно сложить изменения просмотров между замерами, попадающими в этот интервал."
+A:
+{{
+  "metric": "sum_views_delta",
+  "entity": "snapshot",
+  "creator_id": "123",
+  "min_views": null,
+  "date_range": {{
+    "start": "2025-11-28",
+    "end": "2025-11-28"
+  }},
+  "time_from": "10:00",
+  "time_to": "15:00",
+  "special": null
 }}
 
 Now the real user question in Russian is:

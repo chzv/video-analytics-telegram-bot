@@ -22,6 +22,8 @@ class ParsedQuery(BaseModel):
     creator_id: Optional[str] = None
     min_views: Optional[int] = None
     date_range: Optional[DateRange] = None
+    time_from: Optional[str] = None   # "HH:MM" or "HH:MM:SS"
+    time_to: Optional[str] = None     # "HH:MM" or "HH:MM:SS"
 
     special: Optional[Literal[
         "distinct_videos_with_positive_delta",
