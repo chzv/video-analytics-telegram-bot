@@ -52,13 +52,18 @@ class ParsedQuery(BaseModel):
     creator_id: Optional[str] = None
     min_views: Optional[int] = None
     date_range: Optional[DateRange] = None
-    special: Optional[Literal["distinct_videos_with_positive_delta"]] = None
+    special: Optional[Literal[
+        "distinct_videos_with_positive_delta",
+        "snapshots_with_negative_delta_views",
+    ]] = None
 
 Field semantics:
 
 - metric:
     - "videos_count":
-        Count videos that match filters (SELECT COUNT(*) FROM videos ...).
+        Count rows that match filters.
+        For entity="video": SELECT COUNT(*) FROM videos ...
+        For entity="snapshot": SELECT COUNT(*) FROM video_snapshots ...
     - "sum_views_delta":
         Sum the delta_views_count field from video_snapshots
         (e.g. total growth of views for a given day).
@@ -95,6 +100,13 @@ Field semantics:
         It means:
         count distinct video_id in video_snapshots
         where delta_views_count > 0 for the requested date_range.
+
+    - "snapshots_with_negative_delta_views":
+        Used for questions like
+        "Сколько всего есть замеров статистики, в которых число просмотров за час оказалось отрицательным?"
+        It means:
+        count rows in video_snapshots
+        where delta_views_count < 0 (optionally filtered by date_range).
 
 The user will ask questions in Russian. Dates can be written in Russian,
 for example: "28 ноября 2025", "с 1 по 5 ноября 2025" and so on.
@@ -191,6 +203,18 @@ A:
   "min_views": 10000,
   "date_range": null,
   "special": null
+}}
+
+Example 7:
+Q: "Сколько всего есть замеров статистики (по всем видео), в которых число просмотров за час оказалось отрицательным — то есть по сравнению с предыдущим замером количество просмотров стало меньше?"
+A:
+{{
+  "metric": "videos_count",
+  "entity": "snapshot",
+  "creator_id": null,
+  "min_views": null,
+  "date_range": null,
+  "special": "snapshots_with_negative_delta_views"
 }}
 
 Now the real user question in Russian is:

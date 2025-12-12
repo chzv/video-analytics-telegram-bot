@@ -58,10 +58,34 @@ FROM video_snapshots AS s
 
     return sql, params
 
+def _build_special_snapshots_with_negative_delta_views(parsed: ParsedQuery) -> SqlWithParams:
+    if parsed.entity != "snapshot":
+        raise ValueError(
+            'special="snapshots_with_negative_delta_views" поддерживается только при entity="snapshot"'
+        )
+
+    params: Dict[str, Any] = {}
+    where: List[str] = ["s.delta_views_count < 0"]
+
+    if parsed.date_range is not None:
+        _apply_date_range(where, params, alias="s", column="created_at", date_range=parsed.date_range)
+
+    where_sql = _build_where_clause(where)
+    sql = f"""
+SELECT COUNT(*) AS value
+FROM video_snapshots AS s
+{where_sql}
+""".strip()
+
+    return sql, params
+
 
 def build_sql(parsed: ParsedQuery) -> SqlWithParams:
     if parsed.special == "distinct_videos_with_positive_delta":
         return _build_special_distinct_videos_with_positive_delta(parsed)
+    if parsed.special == "snapshots_with_negative_delta_views":
+        return _build_special_snapshots_with_negative_delta_views(parsed)
+
 
     params: Dict[str, Any] = {}
     where: List[str] = []

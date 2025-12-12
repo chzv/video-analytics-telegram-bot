@@ -23,4 +23,7 @@ class ParsedQuery(BaseModel):
     min_views: Optional[int] = None
     date_range: Optional[DateRange] = None
 
-    special: Optional[Literal["distinct_videos_with_positive_delta"]] = None
+    special: Optional[Literal[
+        "distinct_videos_with_positive_delta",
+        "snapshots_with_negative_delta_views",
+    ]] = None
