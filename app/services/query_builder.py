@@ -79,12 +79,44 @@ FROM video_snapshots AS s
 
     return sql, params
 
+def _build_special_distinct_creators_with_min_views(parsed: ParsedQuery) -> SqlWithParams:
+    if parsed.entity != "video":
+        raise ValueError(
+            'special="distinct_creators_with_min_views" поддерживается только при entity="video"'
+        )
+
+    params: Dict[str, Any] = {}
+    where: List[str] = []
+    alias = "v"
+
+    if parsed.min_views is not None:
+        where.append(f"{alias}.views_count > :min_views")
+        params["min_views"] = parsed.min_views
+
+    if parsed.creator_id is not None:
+        where.append(f"{alias}.creator_id = :creator_id")
+        params["creator_id"] = parsed.creator_id
+
+    if parsed.date_range is not None:
+        _apply_date_range(where, params, alias=alias, column="video_created_at", date_range=parsed.date_range)
+
+    where_sql = _build_where_clause(where)
+    sql = f"""
+SELECT COUNT(DISTINCT {alias}.creator_id) AS value
+FROM videos AS {alias}
+{where_sql}
+""".strip()
+
+    return sql, params
+
 
 def build_sql(parsed: ParsedQuery) -> SqlWithParams:
     if parsed.special == "distinct_videos_with_positive_delta":
         return _build_special_distinct_videos_with_positive_delta(parsed)
     if parsed.special == "snapshots_with_negative_delta_views":
         return _build_special_snapshots_with_negative_delta_views(parsed)
+    if parsed.special == "distinct_creators_with_min_views":
+        return _build_special_distinct_creators_with_min_views(parsed)
 
 
     params: Dict[str, Any] = {}

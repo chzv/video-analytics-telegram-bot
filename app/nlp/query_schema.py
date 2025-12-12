@@ -28,4 +28,6 @@ class ParsedQuery(BaseModel):
     special: Optional[Literal[
         "distinct_videos_with_positive_delta",
         "snapshots_with_negative_delta_views",
+        "distinct_creators_with_min_views",
     ]] = None
+

@@ -57,6 +57,7 @@ class ParsedQuery(BaseModel):
     special: Optional[Literal[
         "distinct_videos_with_positive_delta",
         "snapshots_with_negative_delta_views",
+        "distinct_creators_with_min_views",
     ]] = None
 
 Field semantics:
@@ -121,6 +122,13 @@ Field semantics:
         It means:
         count rows in video_snapshots
         where delta_views_count < 0 (optionally filtered by date_range).
+
+    - "distinct_creators_with_min_views":
+        Used for questions like
+        "Сколько разных креаторов имеют хотя бы одно видео, которое в итоге набрало больше 100 000 просмотров?"
+        It means:
+        count distinct creator_id in videos
+        where views_count > min_views (and optional date_range filters).
 
 The user will ask questions in Russian. Dates can be written in Russian,
 for example: "28 ноября 2025", "с 1 по 5 ноября 2025" and so on.
@@ -260,6 +268,20 @@ A:
   "time_from": "10:00",
   "time_to": "15:00",
   "special": null
+}}
+
+Example 9:
+Q: "Сколько разных креаторов имеют хотя бы одно видео, которое в итоге набрало больше 100 000 просмотров?"
+A:
+{{
+  "metric": "videos_count",
+  "entity": "video",
+  "creator_id": null,
+  "min_views": 100000,
+  "date_range": null,
+  "time_from": null,
+  "time_to": null,
+  "special": "distinct_creators_with_min_views"
 }}
 
 Now the real user question in Russian is:
