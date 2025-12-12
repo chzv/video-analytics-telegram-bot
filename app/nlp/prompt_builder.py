@@ -10,8 +10,8 @@ to a strict JSON specification.
 Database schema:
 
 Table "videos" (final statistics for each video):
-- id               : BIGINT, primary key, unique video ID
-- creator_id       : BIGINT, creator ID
+- id               : TEXT, primary key, unique video ID
+- creator_id       : TEXT, creator ID
 - video_created_at : TIMESTAMPTZ, publication datetime of the video
 - views_count      : BIGINT, final total number of views for this video
 - likes_count      : BIGINT, final total number of likes
@@ -21,8 +21,8 @@ Table "videos" (final statistics for each video):
 - updated_at       : TIMESTAMPTZ, service field (row updated in DB)
 
 Table "video_snapshots" (hourly statistics snapshots for each video):
-- id                   : BIGINT, primary key
-- video_id             : BIGINT, foreign key to videos(id)
+- id                   : TEXT, primary key
+- video_id             : TEXT, foreign key to videos(id)
 - views_count          : BIGINT, current total views at snapshot time
 - likes_count          : BIGINT, current total likes at snapshot time
 - comments_count       : BIGINT, current total comments at snapshot time
@@ -49,7 +49,7 @@ class ParsedQuery(BaseModel):
         "sum_likes_total",
     ]
     entity: Literal["video", "snapshot"]
-    creator_id: Optional[int] = None
+    creator_id: Optional[str] = None
     min_views: Optional[int] = None
     date_range: Optional[DateRange] = None
     special: Optional[Literal["distinct_videos_with_positive_delta"]] = None
@@ -72,7 +72,8 @@ Field semantics:
     - "snapshot" : use "video_snapshots" table as the primary source.
 
 - creator_id:
-    Filter by creator_id = this value (for videos).
+    Filter by creator_id = this value (for videos). This is a string identifier,
+    for example "aca1061a9d324ecf8c3fa2bb32d7be63".
 
 - min_views:
     Filter videos with views_count > min_views.
@@ -129,7 +130,7 @@ A:
 {{
   "metric": "videos_count",
   "entity": "video",
-  "creator_id": 123,
+  "creator_id": "123",
   "min_views": null,
   "date_range": {{
     "start": "2025-11-01",
@@ -178,6 +179,18 @@ A:
     "end": "2025-11-27"
   }},
   "special": "distinct_videos_with_positive_delta"
+}}
+
+Example 6:
+Q: "Сколько видео у креатора с id aca1061a9d324ecf8c3fa2bb32d7be63 набрали больше 10 000 просмотров по итоговой статистике?"
+A:
+{{
+  "metric": "videos_count",
+  "entity": "video",
+  "creator_id": "aca1061a9d324ecf8c3fa2bb32d7be63",
+  "min_views": 10000,
+  "date_range": null,
+  "special": null
 }}
 
 Now the real user question in Russian is:

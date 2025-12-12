@@ -19,7 +19,7 @@ class ParsedQuery(BaseModel):
 
     entity: Literal["video", "snapshot"]
 
-    creator_id: Optional[int] = None
+    creator_id: Optional[str] = None
     min_views: Optional[int] = None
     date_range: Optional[DateRange] = None
 
